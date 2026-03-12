@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Goat chat</title>
+    <title>MQTT HUB | Redes</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -16,13 +15,13 @@
     <div class="card">
         <header class="app-header">
             <div id="status-dot" class="dot disconnected"></div>
-            <h1>GOAT<span class="highlight">CHAT</span></h1>
-            <span id="session-id" class="id-tag">ID: ...</span>
+            <h1>MQTT <span class="highlight">HUB</span></h1>
+            <input type="text" id="userInput" placeholder="Tu Nombre..." class="user-tag-input">
         </header>
 
         <div id="chat-box">
             <div class="welcome-msg">
-                <span id="connection-text">Iniciando protocolo de enlace...</span>
+                <span id="connection-text">Iniciando protocolo de enlace seguro...</span>
             </div>
         </div>
 
@@ -36,77 +35,81 @@
 <script>
     const BROKER = "broker.hivemq.com";
     const PORT = 8884; 
-    const TOPIC = "Chat"; 
+    const TOPIC = "clase/redes/equipo2/chat_global_final"; 
     
-    const MI_ID = "Cli_" + Math.random().toString(16).substr(2, 4).toUpperCase();
-    document.getElementById("session-id").innerText = `ID: ${MI_ID}`;
-
-    const client = new Paho.MQTT.Client(BROKER, PORT, MI_ID + "_web");
+    // Generamos un ID único interno para evitar que el mensaje se repita al recibirlo
+    const MI_TECNICO_ID = "CL_" + Math.random().toString(16).substr(2, 4).toUpperCase();
+    const client = new Paho.MQTT.Client(BROKER, PORT, "client_" + MI_TECNICO_ID);
 
     client.onMessageArrived = (message) => {
         const chat = document.getElementById("chat-box");
         
-        // El formato es "ID:MENSAJE"
-        const partes = message.payloadString.split(":");
-        const remitenteId = partes[0];
-        const textoMensaje = partes.slice(1).join(":");
+        // El formato recibido es: ID_TECNICO|NOMBRE_USUARIO:MENSAJE
+        const data = message.payloadString.split("|");
+        const remitenteTecnicoId = data[0];
+        
+        const contenido = data[1].split(":");
+        const nombreUsuario = contenido[0];
+        const textoMensaje = contenido.slice(1).join(":");
 
-        if (remitenteId !== MI_ID) {
+        // FILTRO: Solo mostramos si el mensaje NO es el que enviamos nosotros
+        if (remitenteTecnicoId !== MI_TECNICO_ID) {
             chat.innerHTML += `
                 <div class="msg-row rec-row">
                     <div class="msg-rec">
-                        <span class="user-id">${remitenteId}</span>
+                        <span class="user-id">${nombreUsuario}</span>
                         <p class="msg-text">${textoMensaje}</p>
                     </div>
                 </div>`;
-            
-            // Sonido de notificación suave (Opcional, requiere cargar el archivo)
-            // new Audio('notif.mp3').play();
+            chat.scrollTop = chat.scrollHeight;
         }
-        chat.scrollTop = chat.scrollHeight;
     };
 
     client.onConnectionLost = () => {
-        const dot = document.getElementById("status-dot");
-        const statusText = document.getElementById("connection-text");
-        dot.className = "dot disconnected";
-        statusText.innerText = "Transmisión Interrumpida.";
+        document.getElementById("status-dot").className = "dot disconnected";
     };
 
     client.connect({
         onSuccess: () => {
-            const dot = document.getElementById("status-dot");
-            const chat = document.getElementById("chat-box");
-            
-            dot.className = "dot connected";
-            chat.innerHTML = `<div class="welcome-msg connected-text">Canal Seguro Establecido: ${TOPIC}</div>`;
+            document.getElementById("status-dot").className = "dot connected";
+            document.getElementById("chat-box").innerHTML = `<div class="welcome-msg connected-text">Conexión establecida con éxito.</div>`;
             client.subscribe(TOPIC);
         },
         useSSL: true,
-        onFailure: () => {
-            const dot = document.getElementById("status-dot");
-            dot.className = "dot error";
-        }
+        timeout: 10
     });
 
     function enviar() {
         const input = document.getElementById("mensajeInput");
+        const userField = document.getElementById("userInput");
+        
         if(!input.value.trim()) return;
 
-        const mensajeConId = MI_ID + ":" + input.value;
-        const message = new Paho.MQTT.Message(mensajeConId);
+        // Si el usuario no escribe nombre, asignamos uno por defecto
+        const nombreChat = userField.value.trim() || "Anónimo";
+
+        // Estructura del mensaje: ID_TECNICO|NOMBRE:MENSAJE
+        const rawMessage = `${MI_TECNICO_ID}|${nombreChat}:${input.value}`;
+        
+        const message = new Paho.MQTT.Message(rawMessage);
         message.destinationName = TOPIC;
         client.send(message);
 
+        // Mostramos nuestro propio mensaje en pantalla inmediatamente
         const chat = document.getElementById("chat-box");
         chat.innerHTML += `
             <div class="msg-row me-row">
                 <div class="msg-me">
+                    <span class="user-id">Tú (${nombreChat})</span>
                     <p class="msg-text">${input.value}</p>
                 </div>
             </div>`;
         chat.scrollTop = chat.scrollHeight;
         input.value = "";
+        
+        // Bloqueamos el input de usuario tras el primer mensaje para mantener identidad
+        userField.readOnly = true;
+        userField.style.opacity = "0.6";
     }
 </script>
 </body>
