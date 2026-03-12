@@ -3,89 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MQTT Messenger Pro</title>
+    <title>MQTT Messenger Pro | Cyber-Chat</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
 </head>
 <body>
 
 <div class="container">
     <div class="card">
-        <h1>MQTT <span class="highlight">Messenger</span></h1>
-        <h2>Proyecto Unidad - Redes</h2>
+        <header class="app-header">
+            <div id="status-dot" class="dot disconnected"></div>
+            <h1>MQTT <span class="highlight">HUB</span></h1>
+            <span id="session-id" class="id-tag">ID: ...</span>
+        </header>
 
         <div id="chat-box">
-            <p style="text-align: center; opacity: 0.5;">Conectando al servidor seguro...</p>
+            <div class="welcome-msg">
+                <span id="connection-text">Iniciando protocolo de enlace...</span>
+            </div>
         </div>
 
         <div class="input-group">
-            <input type="text" id="mensajeInput" placeholder="Escribe un mensaje..." onkeypress="if(event.key==='Enter') enviar()">
+            <input type="text" id="mensajeInput" placeholder=">_ Ingresa tu transmisión..." onkeypress="if(event.key==='Enter') enviar()">
             <button onclick="enviar()">ENVIAR</button>
         </div>
-
-        <table class="net-table">
-            <thead>
-                <tr><th>Estado</th><th>ID de Sesión</th></tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td id="status">Conectando...</td>
-                    <td id="mi-id-display">...</td>
-                </tr>
-            </tbody>
-        </table>
     </div>
 </div>
 
 <script>
     const BROKER = "broker.hivemq.com";
     const PORT = 8884; 
-    const TOPIC = "clase/redes/equipo2/chat_final_sin_duplicados"; 
+    const TOPIC = "clase/redes/equipo2/chat_mejorado_v1"; 
     
-    // Generamos un ID único para esta pestaña/navegador
-    const MI_ID = "User_" + Math.random().toString(16).substr(2, 4);
-    document.getElementById("mi-id-display").innerText = MI_ID;
+    const MI_ID = "Cli_" + Math.random().toString(16).substr(2, 4).toUpperCase();
+    document.getElementById("session-id").innerText = `ID: ${MI_ID}`;
 
-    const client = new Paho.MQTT.Client(BROKER, PORT, "cli_" + MI_ID);
+    const client = new Paho.MQTT.Client(BROKER, PORT, MI_ID + "_web");
 
     client.onMessageArrived = (message) => {
         const chat = document.getElementById("chat-box");
         
-        // El formato del mensaje recibido es "ID_REMITENTE:MENSAJE"
+        // El formato es "ID:MENSAJE"
         const partes = message.payloadString.split(":");
         const remitenteId = partes[0];
         const textoMensaje = partes.slice(1).join(":");
 
-        // FILTRO ANTIDUPLICADOS: 
-        // Si el ID del que envía NO es el mío, lo pongo como mensaje recibido (gris)
         if (remitenteId !== MI_ID) {
-            chat.innerHTML += `<div class="msg-rec"><b>${remitenteId}:</b><br>${textoMensaje}</div>`;
-            chat.scrollTop = chat.scrollHeight;
+            chat.innerHTML += `
+                <div class="msg-row rec-row">
+                    <div class="msg-rec">
+                        <span class="user-id">${remitenteId}</span>
+                        <p class="msg-text">${textoMensaje}</p>
+                    </div>
+                </div>`;
+            
+            // Sonido de notificación suave (Opcional, requiere cargar el archivo)
+            // new Audio('notif.mp3').play();
         }
+        chat.scrollTop = chat.scrollHeight;
+    };
+
+    client.onConnectionLost = () => {
+        const dot = document.getElementById("status-dot");
+        const statusText = document.getElementById("connection-text");
+        dot.className = "dot disconnected";
+        statusText.innerText = "Transmisión Interrumpida.";
     };
 
     client.connect({
         onSuccess: () => {
-            document.getElementById("status").innerHTML = "✅ Conectado";
-            document.getElementById("chat-box").innerHTML = '<p style="text-align: center; color: #00eaff;">● Chat Global Activo</p>';
+            const dot = document.getElementById("status-dot");
+            const chat = document.getElementById("chat-box");
+            
+            dot.className = "dot connected";
+            chat.innerHTML = `<div class="welcome-msg connected-text">Canal Seguro Establecido: ${TOPIC}</div>`;
             client.subscribe(TOPIC);
         },
-        useSSL: true
+        useSSL: true,
+        onFailure: () => {
+            const dot = document.getElementById("status-dot");
+            dot.className = "dot error";
+        }
     });
 
     function enviar() {
         const input = document.getElementById("mensajeInput");
         if(!input.value.trim()) return;
 
-        // Concatenamos nuestro ID al mensaje para que los demás sepan quién soy
         const mensajeConId = MI_ID + ":" + input.value;
         const message = new Paho.MQTT.Message(mensajeConId);
         message.destinationName = TOPIC;
         client.send(message);
 
-        // Ponemos nuestro mensaje en pantalla inmediatamente (cian)
         const chat = document.getElementById("chat-box");
-        chat.innerHTML += `<div class="msg-me"><b>Tú:</b><br>${input.value}</div>`;
+        chat.innerHTML += `
+            <div class="msg-row me-row">
+                <div class="msg-me">
+                    <p class="msg-text">${input.value}</p>
+                </div>
+            </div>`;
         chat.scrollTop = chat.scrollHeight;
         input.value = "";
     }
