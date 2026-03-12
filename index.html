@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MQTT Messenger Pro | Cyber-Chat</title>
+    <title>Goat chat</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -16,7 +16,7 @@
     <div class="card">
         <header class="app-header">
             <div id="status-dot" class="dot disconnected"></div>
-            <h1>MQTT <span class="highlight">HUB</span></h1>
+            <h1>GOAT<span class="highlight">CHAT</span></h1>
             <span id="session-id" class="id-tag">ID: ...</span>
         </header>
 
@@ -36,7 +36,7 @@
 <script>
     const BROKER = "broker.hivemq.com";
     const PORT = 8884; 
-    const TOPIC = "clase/redes/equipo2/chat_mejorado_v1"; 
+    const TOPIC = "Chat"; 
     
     const MI_ID = "Cli_" + Math.random().toString(16).substr(2, 4).toUpperCase();
     document.getElementById("session-id").innerText = `ID: ${MI_ID}`;
