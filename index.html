@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GOAT</title>
-    
+    <title>MQTT Pro | Redes</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <link rel="stylesheet" href="style.css">
@@ -15,19 +14,26 @@
     <div class="card">
         <header class="app-header">
             <div id="status-dot" class="dot disconnected"></div>
-            <h1>GOAT<span class="highlight">CHAT</span></h1>
-            <input type="text" id="userInput" placeholder="Tu Nombre..." class="user-tag-input">
+            <div class="profile-section">
+                <label for="profileInput">
+                    <img id="profilePreview" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" class="profile-pic" title="Cambiar foto de perfil">
+                </label>
+                <input type="file" id="profileInput" accept="image/*" style="display:none" onchange="updateProfilePic(this)">
+            </div>
+            <input type="text" id="userInput" placeholder="Escribe tu nombre..." class="user-tag-input">
         </header>
 
         <div id="chat-box">
-            <div class="welcome-msg">
-                <span id="connection-text">Iniciando protocolo de enlace seguro...</span>
-            </div>
+            <div class="welcome-msg">Conectando al servidor...</div>
         </div>
 
         <div class="input-group">
-            <input type="text" id="mensajeInput" placeholder=">_ Ingresa tu transmisión..." onkeypress="if(event.key==='Enter') enviar()">
-            <button onclick="enviar()">ENVIAR</button>
+            <label class="attach-btn" title="Enviar imagen o GIF">
+                +
+                <input type="file" id="fileInput" accept="image/png, image/gif, image/jpeg" style="display:none" onchange="sendImage(this)">
+            </label>
+            <input type="text" id="mensajeInput" placeholder="Escribe un mensaje..." onkeypress="if(event.key==='Enter') enviar()">
+            <button onclick="enviar()">➤</button>
         </div>
     </div>
 </div>
@@ -35,81 +41,96 @@
 <script>
     const BROKER = "broker.hivemq.com";
     const PORT = 8884; 
-    const TOPIC = "Chat"; 
-    
-    // Generamos un ID único interno para evitar que el mensaje se repita al recibirlo
+    const TOPIC = "clase/redes/equipo2/whatsapp_final_v2"; 
     const MI_TECNICO_ID = "CL_" + Math.random().toString(16).substr(2, 4).toUpperCase();
+    let miFotoBase64 = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
     const client = new Paho.MQTT.Client(BROKER, PORT, "client_" + MI_TECNICO_ID);
 
     client.onMessageArrived = (message) => {
         const chat = document.getElementById("chat-box");
-        
-        // El formato recibido es: ID_TECNICO|NOMBRE_USUARIO:MENSAJE
-        const data = message.payloadString.split("|");
-        const remitenteTecnicoId = data[0];
-        
-        const contenido = data[1].split(":");
-        const nombreUsuario = contenido[0];
-        const textoMensaje = contenido.slice(1).join(":");
+        let data;
+        try {
+            data = JSON.parse(message.payloadString);
+        } catch(e) { return; }
 
-        // FILTRO: Solo mostramos si el mensaje NO es el que enviamos nosotros
-        if (remitenteTecnicoId !== MI_TECNICO_ID) {
+        if (data.tecnicoId !== MI_TECNICO_ID) {
+            let contenido = data.tipo === "texto" 
+                ? `<p class="msg-text">${data.mensaje}</p>` 
+                : `<img src="${data.mensaje}" class="chat-img">`;
+
             chat.innerHTML += `
                 <div class="msg-row rec-row">
+                    <img src="${data.fotoPerfil}" class="mini-profile">
                     <div class="msg-rec">
-                        <span class="user-id">${nombreUsuario}</span>
-                        <p class="msg-text">${textoMensaje}</p>
+                        <span class="user-id">${data.nombre}</span>
+                        ${contenido}
                     </div>
                 </div>`;
             chat.scrollTop = chat.scrollHeight;
         }
     };
 
-    client.onConnectionLost = () => {
-        document.getElementById("status-dot").className = "dot disconnected";
-    };
-
     client.connect({
         onSuccess: () => {
             document.getElementById("status-dot").className = "dot connected";
-            document.getElementById("chat-box").innerHTML = `<div class="welcome-msg connected-text">Conexión establecida con éxito.</div>`;
+            document.getElementById("chat-box").innerHTML = '<div class="welcome-msg">Protocolo listo. Identifícate para iniciar.</div>';
             client.subscribe(TOPIC);
         },
-        useSSL: true,
-        timeout: 10
+        useSSL: true
     });
 
-    function enviar() {
+    function updateProfilePic(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                miFotoBase64 = e.target.result;
+                document.getElementById("profilePreview").src = miFotoBase64;
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function enviar(tipo = "texto", contenido = null) {
         const input = document.getElementById("mensajeInput");
         const userField = document.getElementById("userInput");
+        const msj = contenido || input.value;
         
-        if(!input.value.trim()) return;
+        if(!msj && tipo === "texto") return;
 
-        // Si el usuario no escribe nombre, asignamos uno por defecto
-        const nombreChat = userField.value.trim() || "Anónimo";
+        const payload = {
+            tecnicoId: MI_TECNICO_ID,
+            nombre: userField.value.trim() || "Anónimo",
+            fotoPerfil: miFotoBase64,
+            tipo: tipo,
+            mensaje: msj
+        };
 
-        // Estructura del mensaje: ID_TECNICO|NOMBRE:MENSAJE
-        const rawMessage = `${MI_TECNICO_ID}|${nombreChat}:${input.value}`;
-        
-        const message = new Paho.MQTT.Message(rawMessage);
+        const message = new Paho.MQTT.Message(JSON.stringify(payload));
         message.destinationName = TOPIC;
         client.send(message);
 
-        // Mostramos nuestro propio mensaje en pantalla inmediatamente
         const chat = document.getElementById("chat-box");
+        let htmlContenido = tipo === "texto" 
+            ? `<p class="msg-text">${msj}</p>` 
+            : `<img src="${msj}" class="chat-img">`;
+
         chat.innerHTML += `
             <div class="msg-row me-row">
                 <div class="msg-me">
-                    <span class="user-id">Tú (${nombreChat})</span>
-                    <p class="msg-text">${input.value}</p>
+                    ${htmlContenido}
                 </div>
             </div>`;
         chat.scrollTop = chat.scrollHeight;
         input.value = "";
-        
-        // Bloqueamos el input de usuario tras el primer mensaje para mantener identidad
-        userField.readOnly = true;
-        userField.style.opacity = "0.6";
+    }
+
+    function sendImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => enviar("imagen", e.target.result);
+            reader.readAsDataURL(input.files[0]);
+        }
     }
 </script>
 </body>
