@@ -15,7 +15,7 @@
         <h2>Proyecto Unidad - Redes</h2>
 
         <div id="chat-box">
-            <p id="loading-text" style="text-align: center; opacity: 0.5;">Intentando conectar de forma segura...</p>
+            <p id="loading-text" style="text-align: center; opacity: 0.5;">Iniciando conexión segura...</p>
         </div>
 
         <div class="input-group">
@@ -39,36 +39,33 @@
 </div>
 
 <script>
-    // Configuración para HiveMQ con SSL (Seguro)
+    // CONFIGURACIÓN DE CANALES SEPARADOS
     const BROKER = "broker.hivemq.com";
     const PORT = 8884; 
-    const TOPIC = "clase/redes/equipo/final"; // Asegúrate que sea el mismo en Python
+    const TOPIC_SUB = "clase/redes/equipo2/python"; // Escucha a Python
+    const TOPIC_PUB = "clase/redes/equipo2/web";    // Envía a Python
 
     const client = new Paho.MQTT.Client(BROKER, PORT, "web_client_" + Math.random().toString(16).substr(2, 8));
 
     client.onMessageArrived = (message) => {
         const chat = document.getElementById("chat-box");
+        // Solo muestra mensajes que llegan por el canal de Python
         chat.innerHTML += `<div class="msg-rec"><b>Remoto:</b><br>${message.payloadString}</div>`;
         chat.scrollTop = chat.scrollHeight;
     };
 
     client.onConnectionLost = (responseObject) => {
         document.getElementById("status").innerHTML = "❌ Desconectado";
-        console.log("Error: " + responseObject.errorMessage);
     };
 
     client.connect({
         onSuccess: () => {
             document.getElementById("status").innerHTML = "✅ Conectado";
             document.getElementById("chat-box").innerHTML = '<p style="text-align: center; color: #00eaff;">● Sistema Listo</p>';
-            client.subscribe(TOPIC);
+            client.subscribe(TOPIC_SUB); 
         },
-        useSSL: true, // Esto es vital para GitHub Pages
-        timeout: 10,
-        onFailure: (error) => {
-            document.getElementById("status").innerHTML = "❌ Falló conexión";
-            console.log(error);
-        }
+        useSSL: true, 
+        timeout: 10
     });
 
     function enviar() {
@@ -76,7 +73,7 @@
         if(!input.value.trim()) return;
 
         const message = new Paho.MQTT.Message(input.value);
-        message.destinationName = TOPIC;
+        message.destinationName = TOPIC_PUB; 
         client.send(message);
 
         const chat = document.getElementById("chat-box");
