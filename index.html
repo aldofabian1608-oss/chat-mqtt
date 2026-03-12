@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MQTT HUB | Redes</title>
+    <title>GOAT</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
@@ -15,7 +15,7 @@
     <div class="card">
         <header class="app-header">
             <div id="status-dot" class="dot disconnected"></div>
-            <h1>MQTT <span class="highlight">HUB</span></h1>
+            <h1>GOAT<span class="highlight">CHAT</span></h1>
             <input type="text" id="userInput" placeholder="Tu Nombre..." class="user-tag-input">
         </header>
 
@@ -35,7 +35,7 @@
 <script>
     const BROKER = "broker.hivemq.com";
     const PORT = 8884; 
-    const TOPIC = "clase/redes/equipo2/chat_global_final"; 
+    const TOPIC = "Chat"; 
     
     // Generamos un ID único interno para evitar que el mensaje se repita al recibirlo
     const MI_TECNICO_ID = "CL_" + Math.random().toString(16).substr(2, 4).toUpperCase();
