@@ -6,86 +6,51 @@ from PIL import Image
 
 BROKER = "broker.hivemq.com"
 TOPIC = "clase/redes/equipo2/whatsapp_final_v3"
-MI_ID = "Python_User"
+MI_ID = "Python_Aldo"
 
-# --- FUNCIÓN PARA COMPRIMIR IMÁGENES ---
-def procesar_imagen(ruta_imagen, es_perfil=False):
-    # Abrir la imagen
-    with Image.open(ruta_imagen) as img:
-        # Si es perfil la hacemos miniatura (100x100), si es chat (400x400)
-        size = (100, 100) if es_perfil else (400, 400)
+def procesar_imagen(ruta, es_perfil=False):
+    with Image.open(ruta) as img:
+        # Redimensionar drásticamente para que no tape el chat
+        size = (80, 80) if es_perfil else (300, 300)
         img.thumbnail(size)
         
-        # Convertir a RGB (por si es PNG con transparencia)
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
             
-        # Guardar en un buffer de memoria como JPEG comprimido
         buffer = io.BytesIO()
-        img.save(buffer, format="JPEG", quality=60) # Calidad 60 para que sea muy ligero
-        
-        # Convertir a Base64
+        # Calidad baja (40-60) para que el Base64 sea corto
+        img.save(buffer, format="JPEG", quality=50)
         img_str = base64.b64encode(buffer.getvalue()).decode()
         return f"data:image/jpeg;base64,{img_str}"
 
-# --- CONFIGURACIÓN MQTT ---
-def on_message(client, userdata, msg):
-    try:
-        data = json.loads(msg.payload.decode())
-        if data["tecnicoId"] != MI_ID:
-            print(f"\n[{data['nombre']}]: {data['mensaje'] if data['tipo'] == 'texto' else 'sent an image'}")
-    except:
-        pass
+def on_connect(client, userdata, flags, rc):
+    print(f"✅ Conectado al broker (Código: {rc})")
+    client.subscribe(TOPIC)
 
 cliente = mqtt.Client(MI_ID)
-cliente.on_message = on_message
+cliente.on_connect = on_connect
 cliente.connect(BROKER, 1883)
-cliente.subscribe(TOPIC)
 cliente.loop_start()
 
-print("✅ Python Chat Activo con Compresor")
+foto_perfil_default = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAMAAABg3Am1AAAAM1BMVEUAAAD///8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACT5v7FAAAAEHRSTlMAECBAQEBAMDAwMDAwMDAw7fS6pAAAAGBJREFUeNrt0bEOwCAIRVHu//9pG6vXqV2SSTvXFw5CggAAAAAAAAB4I5E5z+xZ6b5l5pxn9qx03zJzzjN7VrpvmTnnmT0r3bfMnPPMnpXuW2bOeWbP6llp5yUAAAAAAAAA+MAnD8wAn7b33pMAAAAASUVORK5CYII="
 
 try:
-    # Foto de perfil inicial
-    foto_perfil = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-    
     while True:
-        opcion = input("\n1. Enviar Texto\n2. Enviar Imagen\n3. Cambiar Foto Perfil\n> ")
+        msg = input("Mensaje o ruta de imagen: ")
+        tipo = "texto"
+        contenido = msg
         
-        if opcion == "1":
-            msj = input("Mensaje: ")
-            payload = {
-                "tecnicoId": MI_ID,
-                "nombre": "Aldo_Python",
-                "fotoPerfil": foto_perfil,
-                "tipo": "texto",
-                "mensaje": msj
-            }
-            cliente.publish(TOPIC, json.dumps(payload))
+        if msg.endswith(('.png', '.jpg', '.jpeg', '.gif')):
+            tipo = "imagen"
+            contenido = procesar_imagen(msg)
             
-        elif opcion == "2":
-            ruta = input("Ruta de la imagen (ej: foto.jpg): ")
-            try:
-                img_b64 = procesar_imagen(ruta)
-                payload = {
-                    "tecnicoId": MI_ID,
-                    "nombre": "Aldo_Python",
-                    "fotoPerfil": foto_perfil,
-                    "tipo": "imagen",
-                    "mensaje": img_b64
-                }
-                cliente.publish(TOPIC, json.dumps(payload))
-                print("¡Imagen enviada y comprimida!")
-            except Exception as e:
-                print(f"Error: {e}")
-
-        elif opcion == "3":
-            ruta = input("Ruta de tu nueva foto de perfil: ")
-            try:
-                foto_perfil = procesar_imagen(ruta, es_perfil=True)
-                print("Foto de perfil actualizada (comprimida).")
-            except Exception as e:
-                print(f"Error: {e}")
-
+        payload = {
+            "tecnicoId": MI_ID,
+            "nombre": "Aldo",
+            "fotoPerfil": foto_perfil_default,
+            "tipo": tipo,
+            "mensaje": contenido
+        }
+        cliente.publish(TOPIC, json.dumps(payload))
 except KeyboardInterrupt:
     cliente.disconnect()
