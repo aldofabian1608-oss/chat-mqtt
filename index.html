@@ -15,7 +15,7 @@
         <h2>Proyecto Unidad - Redes</h2>
 
         <div id="chat-box">
-            <p style="text-align: center; opacity: 0.5;">Conectando al broker...</p>
+            <p id="loading-text" style="text-align: center; opacity: 0.5;">Intentando conectar de forma segura...</p>
         </div>
 
         <div class="input-group">
@@ -25,17 +25,13 @@
 
         <table class="net-table">
             <thead>
-                <tr>
-                    <th>Estado</th>
-                    <th>Broker</th>
-                    <th>Tópico</th>
-                </tr>
+                <tr><th>Estado</th><th>Puerto</th><th>Seguridad</th></tr>
             </thead>
             <tbody>
                 <tr>
-                    <td id="status">Desconectado</td>
-                    <td>broker.hivemq.com</td>
-                    <td>clase/redes/equipo2</td>
+                    <td id="status">Conectando...</td>
+                    <td>8884</td>
+                    <td>SSL Activo</td>
                 </tr>
             </tbody>
         </table>
@@ -43,11 +39,12 @@
 </div>
 
 <script>
+    // Configuración para HiveMQ con SSL (Seguro)
     const BROKER = "broker.hivemq.com";
-    const PORT = 8000; 
-    const TOPIC = "clase/redes/equipo2";
+    const PORT = 8884; 
+    const TOPIC = "clase/redes/equipo/final"; // Asegúrate que sea el mismo en Python
 
-    const client = new Paho.MQTT.Client(BROKER, PORT, "client_" + Math.random().toString(16).substr(2, 8));
+    const client = new Paho.MQTT.Client(BROKER, PORT, "web_client_" + Math.random().toString(16).substr(2, 8));
 
     client.onMessageArrived = (message) => {
         const chat = document.getElementById("chat-box");
@@ -55,13 +52,23 @@
         chat.scrollTop = chat.scrollHeight;
     };
 
+    client.onConnectionLost = (responseObject) => {
+        document.getElementById("status").innerHTML = "❌ Desconectado";
+        console.log("Error: " + responseObject.errorMessage);
+    };
+
     client.connect({
         onSuccess: () => {
             document.getElementById("status").innerHTML = "✅ Conectado";
-            document.getElementById("chat-box").innerHTML = "";
+            document.getElementById("chat-box").innerHTML = '<p style="text-align: center; color: #00eaff;">● Sistema Listo</p>';
             client.subscribe(TOPIC);
         },
-        useSSL: false
+        useSSL: true, // Esto es vital para GitHub Pages
+        timeout: 10,
+        onFailure: (error) => {
+            document.getElementById("status").innerHTML = "❌ Falló conexión";
+            console.log(error);
+        }
     });
 
     function enviar() {
