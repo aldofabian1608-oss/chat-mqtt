@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT Messenger Pro</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h1>MQTT <span class="highlight">Messenger</span></h1>
+        <h2>Proyecto Unidad - Redes</h2>
+
+        <div id="chat-box">
+            <p style="text-align: center; opacity: 0.5;">Conectando al broker...</p>
+        </div>
+
+        <div class="input-group">
+            <input type="text" id="mensajeInput" placeholder="Escribe un mensaje..." onkeypress="if(event.key==='Enter') enviar()">
+            <button onclick="enviar()">ENVIAR</button>
+        </div>
+
+        <table class="net-table">
+            <thead>
+                <tr>
+                    <th>Estado</th>
+                    <th>Broker</th>
+                    <th>Tópico</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td id="status">Desconectado</td>
+                    <td>broker.hivemq.com</td>
+                    <td>clase/redes/equipo2</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const BROKER = "broker.hivemq.com";
+    const PORT = 8000; 
+    const TOPIC = "clase/redes/equipo2";
+
+    const client = new Paho.MQTT.Client(BROKER, PORT, "client_" + Math.random().toString(16).substr(2, 8));
+
+    client.onMessageArrived = (message) => {
+        const chat = document.getElementById("chat-box");
+        chat.innerHTML += `<div class="msg-rec"><b>Remoto:</b><br>${message.payloadString}</div>`;
+        chat.scrollTop = chat.scrollHeight;
+    };
+
+    client.connect({
+        onSuccess: () => {
+            document.getElementById("status").innerHTML = "✅ Conectado";
+            document.getElementById("chat-box").innerHTML = "";
+            client.subscribe(TOPIC);
+        },
+        useSSL: false
+    });
+
+    function enviar() {
+        const input = document.getElementById("mensajeInput");
+        if(!input.value.trim()) return;
+
+        const message = new Paho.MQTT.Message(input.value);
+        message.destinationName = TOPIC;
+        client.send(message);
+
+        const chat = document.getElementById("chat-box");
+        chat.innerHTML += `<div class="msg-me"><b>Tú:</b><br>${input.value}</div>`;
+        chat.scrollTop = chat.scrollHeight;
+        input.value = "";
+    }
+</script>
+</body>
+</html>
