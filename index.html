@@ -12,7 +12,7 @@
 <div class="container">
     <div class="card">
         <h1>MQTT <span class="highlight">Messenger</span></h1>
-        <h2>Proyecto Unidad - Redes</h2>
+        <h2>Proyecto Unidad - Equipo 2</h2>
 
         <div id="chat-box">
             <p id="loading-text" style="text-align: center; opacity: 0.5;">Iniciando conexión segura...</p>
@@ -39,23 +39,19 @@
 </div>
 
 <script>
-    // CONFIGURACIÓN DE CANALES SEPARADOS
     const BROKER = "broker.hivemq.com";
     const PORT = 8884; 
-    const TOPIC_SUB = "clase/redes/equipo2/python"; // Escucha a Python
-    const TOPIC_PUB = "clase/redes/equipo2/web";    // Envía a Python
+    // CANALES SEPARADOS PARA EVITAR DUPLICADOS
+    const TOPIC_SUB = "clase/redes/equipo2/python_a_web"; 
+    const TOPIC_PUB = "clase/redes/equipo2/web_a_python";
 
-    const client = new Paho.MQTT.Client(BROKER, PORT, "web_client_" + Math.random().toString(16).substr(2, 8));
+    const client = new Paho.MQTT.Client(BROKER, PORT, "web_" + Math.random().toString(16).substr(2, 5));
 
     client.onMessageArrived = (message) => {
         const chat = document.getElementById("chat-box");
-        // Solo muestra mensajes que llegan por el canal de Python
+        // Solo muestra lo que llega de Python
         chat.innerHTML += `<div class="msg-rec"><b>Remoto:</b><br>${message.payloadString}</div>`;
         chat.scrollTop = chat.scrollHeight;
-    };
-
-    client.onConnectionLost = (responseObject) => {
-        document.getElementById("status").innerHTML = "❌ Desconectado";
     };
 
     client.connect({
