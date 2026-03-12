@@ -13,7 +13,6 @@ body {
     backdrop-filter: blur(8px);
 }
 h1 { text-align: center; color: #00eaff; text-transform: uppercase; }
-.highlight { font-weight: 300; color: #fff; }
 #chat-box {
     height: 350px; overflow-y: auto; background: rgba(0,0,0,0.3);
     border-radius: 12px; padding: 20px; margin-bottom: 20px;

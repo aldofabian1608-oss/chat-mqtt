@@ -12,10 +12,10 @@
 <div class="container">
     <div class="card">
         <h1>MQTT <span class="highlight">Messenger</span></h1>
-        <h2>Proyecto Unidad - Equipo 2</h2>
+        <h2>Proyecto Unidad - Redes</h2>
 
         <div id="chat-box">
-            <p id="loading-text" style="text-align: center; opacity: 0.5;">Iniciando conexión segura...</p>
+            <p style="text-align: center; opacity: 0.5;">Conectando al servidor seguro...</p>
         </div>
 
         <div class="input-group">
@@ -25,13 +25,12 @@
 
         <table class="net-table">
             <thead>
-                <tr><th>Estado</th><th>Puerto</th><th>Seguridad</th></tr>
+                <tr><th>Estado</th><th>ID de Sesión</th></tr>
             </thead>
             <tbody>
                 <tr>
                     <td id="status">Conectando...</td>
-                    <td>8884</td>
-                    <td>SSL Activo</td>
+                    <td id="mi-id-display">...</td>
                 </tr>
             </tbody>
         </table>
@@ -41,37 +40,50 @@
 <script>
     const BROKER = "broker.hivemq.com";
     const PORT = 8884; 
-    // CANALES SEPARADOS PARA EVITAR DUPLICADOS
-    const TOPIC_SUB = "clase/redes/equipo2/python_a_web"; 
-    const TOPIC_PUB = "clase/redes/equipo2/web_a_python";
+    const TOPIC = "clase/redes/equipo2/chat_final_sin_duplicados"; 
+    
+    // Generamos un ID único para esta pestaña/navegador
+    const MI_ID = "User_" + Math.random().toString(16).substr(2, 4);
+    document.getElementById("mi-id-display").innerText = MI_ID;
 
-    const client = new Paho.MQTT.Client(BROKER, PORT, "web_" + Math.random().toString(16).substr(2, 5));
+    const client = new Paho.MQTT.Client(BROKER, PORT, "cli_" + MI_ID);
 
     client.onMessageArrived = (message) => {
         const chat = document.getElementById("chat-box");
-        // Solo muestra lo que llega de Python
-        chat.innerHTML += `<div class="msg-rec"><b>Remoto:</b><br>${message.payloadString}</div>`;
-        chat.scrollTop = chat.scrollHeight;
+        
+        // El formato del mensaje recibido es "ID_REMITENTE:MENSAJE"
+        const partes = message.payloadString.split(":");
+        const remitenteId = partes[0];
+        const textoMensaje = partes.slice(1).join(":");
+
+        // FILTRO ANTIDUPLICADOS: 
+        // Si el ID del que envía NO es el mío, lo pongo como mensaje recibido (gris)
+        if (remitenteId !== MI_ID) {
+            chat.innerHTML += `<div class="msg-rec"><b>${remitenteId}:</b><br>${textoMensaje}</div>`;
+            chat.scrollTop = chat.scrollHeight;
+        }
     };
 
     client.connect({
         onSuccess: () => {
             document.getElementById("status").innerHTML = "✅ Conectado";
-            document.getElementById("chat-box").innerHTML = '<p style="text-align: center; color: #00eaff;">● Sistema Listo</p>';
-            client.subscribe(TOPIC_SUB); 
+            document.getElementById("chat-box").innerHTML = '<p style="text-align: center; color: #00eaff;">● Chat Global Activo</p>';
+            client.subscribe(TOPIC);
         },
-        useSSL: true, 
-        timeout: 10
+        useSSL: true
     });
 
     function enviar() {
         const input = document.getElementById("mensajeInput");
         if(!input.value.trim()) return;
 
-        const message = new Paho.MQTT.Message(input.value);
-        message.destinationName = TOPIC_PUB; 
+        // Concatenamos nuestro ID al mensaje para que los demás sepan quién soy
+        const mensajeConId = MI_ID + ":" + input.value;
+        const message = new Paho.MQTT.Message(mensajeConId);
+        message.destinationName = TOPIC;
         client.send(message);
 
+        // Ponemos nuestro mensaje en pantalla inmediatamente (cian)
         const chat = document.getElementById("chat-box");
         chat.innerHTML += `<div class="msg-me"><b>Tú:</b><br>${input.value}</div>`;
         chat.scrollTop = chat.scrollHeight;
